@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <title>XML Filter</title>
+   <!--
+    Copyright 2018
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   -->
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            background: #F0F0F0;
+        }
+        
+        .node {
+            margin-left: 20px;
+        }
+        
+        .leaf {
+            margin-left: 35px;
+        }
+        
+        .closingTag {
+            margin-left: 18px;
+        }
+        
+        div.collapsed > span.closingTag {
+            margin-left: 0px;
+        }
+        
+        .nodeName {
+            color: blue;
+        }
+        
+        .key {
+            color: red;
+        }
+        
+        .value {
+            color: purple;
+        }
+        
+        .data {
+            font-weight: bold;
+        }
+        
+        #wrapper {
+            border: 1px solid black;
+            margin: 10px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .hide {
+            display: none;
+        }
+        
+        div.collapsed > div {
+            display: none;
+        }
+        
+        div.collapsed > span.text_data {
+            display: none;
+        }
+        
+        a.ex_col {
+            background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAPVJREFUeNpi/P//PwMlgImBQkCxASzInJS2N8GMjIzdQKYiFrX3gd4tnVMlshZFFBQGMBxWcefe+Zvf/v/79w8Dg8RB8sjqQRjFBW/evFHUVVZg+PXrF9zw79+/M/z48YNBRogVLM/AoIzbC+/evWX4/fs3GH/58pXh/fv3YDYIcHBwguXxhsGXL98Y/v79y2AUshND4bYpJmB5vAb8/8/C8PPnH4bTKz0xFH748Aksj9cAdnZ+oAuYgX7+i6GQjY0bLI83HXBzi9w/e/0vUDEnBr54+x9YHq8LODkFSzsWfAWmg69Y0wFIHl2QcejnBYoNAAgwAHfJlGbfvT6XAAAAAElFTkSuQmCC)
+            no-repeat
+            center;
+            width: 15px;
+            height: 21px;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        div.collapsed a.ex_col {
+            background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAQtJREFUeNpi/P//PwMlgImBQkCxASzInJS2N8GMjIzdQKYiFrX3gd4tnVMlshZFFBQGMBxWcefe+Zvf/v/79w8Dg8RB8sjqQRjFC2/evFHUVWZj+PXrFxi7pJ1i+PDhA8OLFy8YZIS+guXxeuHdu7cMv3//BuMvX76C+Y8ePQbLcXBwgvl4Dfjy5RvD379/GYxCdsLFQspugeltU0zA8ngN+P+fheHnzz8Mp1d6gvkmYbsZzqxyBbM/fPgElsdrADs7P9AFzAw/fvyF8799g7DZ2LjBfLzpgJtb5P7Z63+BijnB+MwqBzj74u1/YHm8LuDkFCztWPAVmA6+Yk0HIHl0QcahnxcoNgAgwAAeoJ80zggDNAAAAABJRU5ErkJggg==)
+            no-repeat
+            center;
+        }
+        
+        #xmlContainer, #loading {
+            display: none;
+        }
+        
+        #loading {
+            text-align: center;
+        }
+        
+        #percent {
+            font-size: 3em;
+            margin: 10px;
+        }
+        
+        h1 {
+            text-align: center;
+        }
+        
+        #control {
+            border: 1px solid gray;
+            margin: 10px ;
+            padding: 10px;
+            /*width: 60%;*/
+            background:     #E8E8E8  ;
+        }
+        
+        #file_a {
+            display: none;
+        }
+        
+        .highlight {
+            background-color: yellow;
+        }
+        
+        #control > div {
+            margin-top: 20px;
+        }
+        
+        #control label {
+            width: 350px;
+            display: inline-block;
+        }
+        
+    </style>
+    <script>
+    // Highlight Search Words: http://bartaz.github.io/sandbox.js/jquery.highlight.html
+    /*
+    * jQuery Highlight plugin
+    *
+    * Based on highlight v3 by Johann Burkard
+    * http://johannburkard.de/blog/programming/javascript/highlight-javascript-text-higlighting-jquery-plugin.html
+    *
+    * Code a little bit refactored and cleaned (in my humble opinion).
+    * Most important changes:
+    * - has an option to highlight only entire words (wordsOnly - false by default),
+    * - has an option to be case sensitive (caseSensitive - false by default)
+    * - highlight element tag and class names can be specified in options
+    *
+    * Usage:
+    * // wrap every occurrance of text 'lorem' in content
+    * // with <span class='highlight'> (default options)
+    * $('#content').highlight('lorem');
+    *
+    * // search for and highlight more terms at once
+    * // so you can save some time on traversing DOM
+    * $('#content').highlight(['lorem', 'ipsum']);
+    * $('#content').highlight('lorem ipsum');
+    *
+    * // search only for entire word 'lorem'
+    * $('#content').highlight('lorem', { wordsOnly: true });
+    *
+    * // don't ignore case during search of term 'lorem'
+    * $('#content').highlight('lorem', { caseSensitive: true });
+    *
+    * // wrap every occurrance of term 'ipsum' in content
+    * // with <em class='important'>
+    * $('#content').highlight('ipsum', { element: 'em', className: 'important' });
+    *
+    * // remove default highlight
+    * $('#content').unhighlight();
+    *
+    * // remove custom highlight
+    * $('#content').unhighlight({ element: 'em', className: 'important' });
+    *
+    *
+    * Copyright (c) 2009 Bartek Szopka
+    *
+    * Licensed under MIT license.
+    *
+    */
+    jQuery.extend({
+        highlight: function (node, re, nodeName, className) {
+            if (node.nodeType === 3) {
+                var match = node.data.match(re);
+                if (match) {
+                    var highlight = document.createElement(nodeName || 'span');
+                    highlight.className = className || 'highlight';
+                    var wordNode = node.splitText(match.index);
+                    wordNode.splitText(match[0].length);
+                    var wordClone = wordNode.cloneNode(true);
+                    highlight.appendChild(wordClone);
+                    wordNode.parentNode.replaceChild(highlight, wordNode);
+                    return 1; //skip added node in parent
+                }
+            } else if ((node.nodeType === 1 && node.childNodes) && // only element nodes that have children
+                        !/(script|style)/i.test(node.tagName) && // ignore script and style nodes
+                        !(node.tagName === nodeName.toUpperCase() && node.className === className)) { // skip if already highlighted
+                            for (var i = 0; i < node.childNodes.length; i++) {
+                                i += jQuery.highlight(node.childNodes[i], re, nodeName, className);
+                            }
+            }
+            return 0;
+        }
+    });
+    
+    jQuery.fn.unhighlight = function (options) {
+        var settings = { className: 'highlight', element: 'span' };
+        jQuery.extend(settings, options);
+        return this.find(settings.element + "." + settings.className).each(function () {
+            var parent = this.parentNode;
+            parent.replaceChild(this.firstChild, this);
+            parent.normalize();
+        }).end();
+    };
+    
+    jQuery.fn.highlight = function (words, options) {
+        var settings = { className: 'highlight', element: 'span', caseSensitive: false, wordsOnly: false };
+        jQuery.extend(settings, options);
+        if (words.constructor === String) {
+            words = [words];
+        }
+        words = jQuery.grep(words, function(word, i){
+            return word != '';
+        });
+        words = jQuery.map(words, function(word, i) {
+            return word.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+        });
+        if (words.length == 0) { return this; };
+        var flag = settings.caseSensitive ? "" : "i";
+        var pattern = "(" + words.join("|") + ")";
+        if (settings.wordsOnly) {
+            pattern = "\\b" + pattern + "\\b";
+        }
+        var re = new RegExp(pattern, flag);
+        return this.each(function () {
+            jQuery.highlight(this, re, settings.element, settings.className);
+        });
+    };
+    </script>
+</head>
+<body>
+    <h1>XML Filter</h1>
+    <div id="control">
+        <div style="">
+            <label>Browse for the XML file:</label>
+            <input type="file" id="file" style="background: #A8A8A8 ;"/>
+            <button href="#" onclick="return false" id="file_a">Reload File</button>
+        </div>
+
+        <div style="">
+            <form id="filter_form">
+                <label>Filter the XML file:</label>
+                <input type="text" id="filter" />
+                <!--a href="#" onclick="return false" id="filter_a">filter</a-->
+                <input type="submit" value="Filter!" />
+            </form>
+        </div>
+        <div style="">
+            <label>When an XML node doesn't match the filter: </label>
+            <select id="hide_or_collapse">
+                <option value="collapsed">Collapse it</option>
+                <option value="hide">Hide it</option>
+            </select>
+        </div>
+        <div style="clear:both"></div>
+    </div>
+    
+    <div id="wrapper">
+        <div id="xmlContainer">
+            
+        </div>
+        <div id="loading">
+            <img src="data:image/gif;base64,R0lGODlhEAAQAPIAAP///wAAAMLCwkJCQgAAAGJiYoKCgpKSkiH+GkNyZWF0ZWQgd2l0aCBhamF4bG9hZC5pbmZvACH5BAAKAAAAIf8LTkVUU0NBUEUyLjADAQAAACwAAAAAEAAQAAADMwi63P4wyklrE2MIOggZnAdOmGYJRbExwroUmcG2LmDEwnHQLVsYOd2mBzkYDAdKa+dIAAAh+QQACgABACwAAAAAEAAQAAADNAi63P5OjCEgG4QMu7DmikRxQlFUYDEZIGBMRVsaqHwctXXf7WEYB4Ag1xjihkMZsiUkKhIAIfkEAAoAAgAsAAAAABAAEAAAAzYIujIjK8pByJDMlFYvBoVjHA70GU7xSUJhmKtwHPAKzLO9HMaoKwJZ7Rf8AYPDDzKpZBqfvwQAIfkEAAoAAwAsAAAAABAAEAAAAzMIumIlK8oyhpHsnFZfhYumCYUhDAQxRIdhHBGqRoKw0R8DYlJd8z0fMDgsGo/IpHI5TAAAIfkEAAoABAAsAAAAABAAEAAAAzIIunInK0rnZBTwGPNMgQwmdsNgXGJUlIWEuR5oWUIpz8pAEAMe6TwfwyYsGo/IpFKSAAAh+QQACgAFACwAAAAAEAAQAAADMwi6IMKQORfjdOe82p4wGccc4CEuQradylesojEMBgsUc2G7sDX3lQGBMLAJibufbSlKAAAh+QQACgAGACwAAAAAEAAQAAADMgi63P7wCRHZnFVdmgHu2nFwlWCI3WGc3TSWhUFGxTAUkGCbtgENBMJAEJsxgMLWzpEAACH5BAAKAAcALAAAAAAQABAAAAMyCLrc/jDKSatlQtScKdceCAjDII7HcQ4EMTCpyrCuUBjCYRgHVtqlAiB1YhiCnlsRkAAAOwAAAAAAAAAAAA=="/>
+            <div id="percent">0%</div>
+        </div>
+    </div>
+    
+<script>
+var nodeCounter = 0;
+var totalNumOfElements = 0;
+var xmlElementStack = [];
+var startTime = 0;
+
+function escapeRegExp(str) {
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+};
+
+function filter()
+{
+
+    $("#xmlContainer").hide();
+    $("#percent").hide();
+    $("#loading").show();
+    $("span.data").unhighlight();
+    var hide_or_collapse = $("#hide_or_collapse").val();
+    
+    var text = $("#filter").val();
+    text = text.trim();
+    if (text != "")
+    {
+        $("#hide_or_collapse").prop('disabled', true);
+        text = escapeRegExp(text);
+        var keywords = text.split(/,\s*/);
+        keywords_str = "(" + keywords.join("|") + ")";
+        var regex = new RegExp('("|>)[^"<>]*' + keywords_str + '[^"<>]*("|<)',"i");
+        $("div.node:not(.leaf)").each(function(i, element)
+        {
+            var elem = $(element);
+            if (elem.text().match(regex))
+            {
+                elem.removeClass(hide_or_collapse);
+            }
+            else
+            {
+                elem.addClass(hide_or_collapse);
+            }
+        });
+        
+        $.each(keywords, function(i, val)
+        {
+            if (val != "")
+            {
+                $("span.data").highlight(val);
+            }
+        });
+    }
+    else
+    {
+        $("#hide_or_collapse").prop('disabled', false);
+        $("." + hide_or_collapse).each(function(i, element)
+        {
+            var elem = $(element);
+            elem.removeClass(hide_or_collapse);
+        });
+    }
+    
+    setTimeout(function(){
+        $("#loading").hide();
+        $("#xmlContainer").show();
+        $("#percent").show();
+    }, 500);
+};
+
+function expand_and_collapse(id)
+{
+    var elem = $("#node" + id);
+    if (elem.hasClass("collapsed"))
+    {
+        elem.removeClass("collapsed");
+    }
+    else
+    {
+        elem.addClass("collapsed");
+    }
+};
+
+function parseXmlByChuncks() 
+{
+    var itemsPerChunk = 100;
+    function doChunk() {
+        var cnt = itemsPerChunk;
+        while (cnt-- && xmlElementStack.length > 0) 
+        {
+            parseSingleItem();
+        }
+        if (xmlElementStack.length > 0) 
+        {
+            // Set timeout for another async iteration
+            setTimeout(doChunk, 1);
+        }
+        else
+        {
+            //All done
+            $("#xmlContainer").show();
+            $("#loading").hide();
+            var endTime = new Date();
+            if ((console) && (console.log) )
+            {
+                console.log("XML parsend in " + ((endTime.getTime() - startTime.getTime())/1000) + " seconds.") ;
+            }
+        }
+        $("#percent").text( Math.round(nodeCounter/totalNumOfElements*100) + "%");
+    }    
+    doChunk();    
+}
+
+function parseSingleItem()
+{
+    var item = xmlElementStack.pop();
+    item.xml_children.each(function(index, element)
+    {
+        var elem = $(element);
+        var newContainerStr = "";
+        var elem_children = elem.children();
+        var elemHasChildren = (elem_children.length > 0);
+        var nodeName = elem.prop("nodeName");
+        var elemText = "";
+        var elemHtml = elem.html();
+        if ( (elemHtml != null) && (elemHtml.indexOf("<") < 0) )
+        {
+            elemText += elem.text();
+        }
+        
+        newContainerStr += "<div class='node " + ((elemHasChildren || (elemText != "")) ? '' : 'leaf') +"' id='node" + (++nodeCounter) + "'>";
+        
+        if (elemHasChildren || (elemText != ""))
+        {
+            newContainerStr += "<a class='ex_col' href='javascript:void(0);' onclick='expand_and_collapse(" + nodeCounter + ");'>&nbsp;</a>";
+        }
+        
+        newContainerStr += "<span class='nodeName'>&lt;" + nodeName + "</span>";
+        $.each(this.attributes, function(i, attrib){
+            var name = attrib.name;
+            var value = attrib.value;
+            newContainerStr += " <span class='key'>" + name + "</span><span>=</span><span class='value data'>\"" + value + "\"</span>";
+        });
+        
+        newContainerStr += "<span class='nodeName'>";
+        if (!elemHasChildren && elemText == "")
+        {
+            newContainerStr += " /";
+        }
+        newContainerStr += "&gt;</span>";
+        
+        if (elemText != "")
+        {
+            newContainerStr += "<span class='data text_data'>" + elemText + "</span>";
+        }
+        /*
+        var text = elem.justtext();
+        if (text)
+        {
+            newContainerStr += text;
+        }
+        */
+        
+        if (elemHasChildren || elemText != "")
+        {
+            newContainerStr += "<span class='nodeName " + ((elemText != "" ) ? "" : "closingTag") + "'>&lt;/" + nodeName + "&gt;</span>";
+        }
+        
+        newContainerStr += "</div>";
+        
+        var newContainer = $(newContainerStr);
+        //newContainer.data("nodeName", elem.prop("nodeName"));
+        
+        /*
+        $.each(this.attributes, function(i, attrib){
+            newContainer.data(attrib.name, attrib.value);
+        });
+        */
+        
+        var parentLastChild = item.parentContainer.children(":last");
+        if (parentLastChild.length == 0)
+        {
+            item.parentContainer.append(newContainer)
+        }
+        else
+        {
+            parentLastChild.before(newContainer);
+        }
+        
+        xmlElementStack.push({xml_children: elem_children, parentContainer: newContainer});
+    });
+}
+
+
+function handleXml(xmlData) 
+{
+    try
+    {
+        nodeCounter = 0;
+        xmlElementStack = [];
+        $("#xmlContainer").html('');
+        startTime = new Date();
+        
+        $("#xmlContainer").hide();
+        $("#loading").show();
+        $("#hide_or_collapse").prop('disabled', false);
+        
+        var xmlDoc = $.parseXML(xmlData);
+        var xml = $(xmlDoc);
+        totalNumOfElements = xml.find("*").length;
+        //console.log(xmlData);
+        
+        //traverseXml(xml, $("#xmlContainer"));
+        xmlElementStack.push({xml_children: xml.children(), parentContainer: $("#xmlContainer")});
+        parseXmlByChuncks();
+        
+    }
+    catch (err)
+    {
+        console.log(err.message);
+    }
+    
+};
+
+function handleFileSelect(evt) 
+{
+
+    if (evt.target.files.length == 0)
+    {
+        return;
+    }
+    
+    var file = evt.target.files[0]; // FileList object
+    
+    if (!file.type.match('text/xml')) 
+    {
+        return;
+    }
+    
+    $("#file_a").show();
+
+    var reader = new FileReader();
+    
+    $(reader).on('load', function(e)
+    {
+        handleXml(e.target.result);
+    });
+
+    reader.readAsText(file);
+};
+
+jQuery.fn.justtext = function() {
+   
+    return $(this)  .clone()
+            .children()
+            .remove()
+            .end()
+            .text();
+ 
+};
+
+$(document).ready(function()
+{
+    
+    $("#filter_form").bind('submit',function()
+    {
+        filter();
+        return false;
+    });
+    
+    $("#file_a").click(function()
+    {
+        setTimeout(function()
+        {
+            if ($("#file").val() != "")
+            {
+                $("#file").change();
+            }
+        }, 500);
+    });
+    
+    $("#file_a").click();
+    
+    
+    $("#file").change(handleFileSelect);
+});
+
+
+/*
+function traverseXml(xml, parentContainer)
+{
+    var children = xml.children();
+    children.each(function(index, element)
+    {
+        var elem = $(element);
+        var newContainerStr = "";
+        var elemHasChildren = (elem.children().length > 0);
+        
+        newContainerStr += "<div class='node " + ((elemHasChildren) ? '' : 'leaf') +"' id='node" + (++nodeCounter) + "'>";
+        
+        if (elemHasChildren)
+        {
+            newContainerStr += "<a class='ex_col' href='javascript:void(0);' onclick='expand_and_collapse(" + nodeCounter + ");'>&nbsp;</a>";
+        }
+        
+        newContainerStr += "<span class='nodeName'>&lt;" + elem.prop("nodeName") + "</span>";
+        $.each(this.attributes, function(i, attrib){
+            var name = attrib.name;
+            var value = attrib.value;
+            newContainerStr += " <span class='key'>" + name + "</span><span>=</span><span class='value'>\"<b>" + value + "</b>\"</span>";
+        });
+        
+        newContainerStr += "<span class='nodeName'>";
+        if (!elemHasChildren)
+        {
+            newContainerStr += " /";
+        }
+        newContainerStr += "&gt;</span>";
+        
+        var text = elem.justtext();
+        if (text)
+        {
+            newContainerStr += text;
+        }
+        
+        newContainerStr += "</div>";
+        
+        var newContainer = $(newContainerStr);
+        newContainer.data("nodeName", elem.prop("nodeName"));
+        
+        $.each(this.attributes, function(i, attrib){
+            newContainer.data(attrib.name, attrib.value);
+        });
+        
+        parentContainer.append(newContainer);
+
+        traverseXml(elem, newContainer);
+        
+        if (elemHasChildren)
+        {
+            newContainer.append("<span class='nodeName'>&lt;/" + elem.prop("nodeName") + "&gt;</span>");
+        }
+    });
+}; 
+*/
+</script>
+</body>
+</html>

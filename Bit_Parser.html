@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+   <title>Bit Parser</title>
+   <!--
+    Copyright 2018
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   -->
+   <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+   <style>
+      body {
+         font-family: Arial;
+         background: #F0F0F0;
+      }
+      
+      #wrapper {
+         border: 1px solid black;
+         margin: 10px;
+         padding: 10px;
+         background: white;
+      }
+      
+      
+      h1 {
+         text-align: center;
+      }
+      
+      #control {
+         border: 1px solid gray;
+         margin: 10px ;
+         padding: 10px;
+         /*width: 60%;*/
+         background:    #E8E8E8  ;
+      }
+      
+      
+      #control > div {
+         margin-top: 20px;
+      }
+      
+      #control label {
+         width: 80px;
+         display: inline-block;
+      }
+      
+      #bits {
+         margin: 20px auto;
+         padding: 10px;
+         
+      }
+      
+      table, tr, td {
+         border: 1px solid gray;
+      }
+      
+      td {
+         padding: 5px;
+         text-align: center;
+      }
+      
+      .bit_num {
+         background-color: #D8D8D8;
+         font-weight: bold;
+         cursor: pointer;
+         
+      }
+      
+      .bit_num:hover {
+         background-color: #FF9900;
+      }
+      
+      .bit_val input {
+         width: 20px;
+         height: 20px;
+         text-align: center;
+      }
+      
+      #bit_form input {
+         width: 270px;
+      }
+   </style>
+</head>
+
+<body>
+   <h1>Bit Parser</h1>
+   <div id="control">
+      <div style="text-align: center;">
+         Value for <span id="the_value">0</span>
+      </div>
+      <table id="bits">
+         <tr id="bit_values">
+         
+         </tr>
+         <tr id="bit_numbers">
+         
+         </tr>
+      </table>
+      <div style="margin: 0 auto; width: 390px;">
+         
+         <form id="bit_form">
+            <div>
+               <label>Decimal:</label>
+               <input type="text" id="decimal" />
+            </div>
+            
+            <div>
+               <label>Hex:</label>
+               <input type="text" id="hex" />
+            </div>
+            
+            <div>
+               <label>Binary:</label>
+               <input type="text" id="binary" />
+            </div>
+         </form>
+         
+      </div>
+      <div style="text-align: center">
+         <button id="new_window">Open new Window</button>
+      </div>
+      <div style="clear:both"></div>
+   </div>
+   
+<script>
+var num_bits = 32;
+
+if ( (Math.pow(2, num_bits) - 1) > (Number.MAX_SAFE_INTEGER) )
+{
+    // Functionality such as toString(16), parseInt etc. start breaking if numbers are too large.
+    // They need to be reimplemented manually if needed.
+    alert("Javascript can't easily handle such large numbers. Time to reimplement built-in functions manually.");
+}
+
+function updateValues()
+{
+   totalValueStr = "";
+   for (var i = num_bits - 1; i >= 0; --i) 
+   {
+      totalValueStr += ($("#bit_val_" + i).val());
+      if ($("#bit_val_" + i).val() == 1)
+      {
+         $("#bit_val_" + i).css("background-color", "#FFFFCC");
+      }
+      else
+      {
+         $("#bit_val_" + i).css("background-color", "#FFFFFF");
+      }
+   }
+   
+   var totalValue = parseInt(totalValueStr, 2);
+   $("#decimal").val(totalValue);
+   $("#hex").val("0x" + totalValue.toString(16));
+   $("#binary").val("0b" + totalValue.toString(2));
+   
+   $("#the_value").text($("#decimal").val() + " (" + $("#hex").val() + ")");
+}
+
+$(document).ready(function()
+{
+   $("#bit_form input").val("");
+   for (var i = num_bits - 1; i >= 0; --i)
+   {
+      $("#bit_values").append("<td class='bit_val'><input type='text' value='" + 0 + "' id='bit_val_" + i + "'/></td>");
+      var bit_num = (i < 10) ? "0"+i : i
+      $("#bit_numbers").append("<td class='bit_num' id='bit_num_" + i + "'>" + bit_num + "</td>");
+   }
+   
+   $(".bit_num").click(
+      function(){
+         var id = $(this).attr("id").replace("bit_num_", "");
+         var valNode = $("#bit_val_" + id);
+         valNode.val(1 - valNode.val());
+         updateValues();
+      }
+   );
+   
+   $(".bit_val").change(
+      function(){
+         updateValues();
+      }
+   );
+   
+   $("#bit_form input").keyup(function(event){
+       if(event.keyCode == 13){
+           $(this).change();
+       }
+   });
+   
+   $("#bit_form input").change(
+      function()
+      {
+         var newValStr = $(this).val().toLowerCase();
+         var newVal = 0;
+         var base = 0;
+         
+         switch ($(this).attr("id"))
+         {
+            case "hex":
+               if (newValStr.indexOf("0x") === 0)
+               {
+                  newValStr = newValStr.substring(2);
+               }
+               var reg = new RegExp('^[0-9abcdef]+$');
+               base = 16;
+               break;
+               
+            case "binary":
+               if (newValStr.indexOf("0b") === 0)
+               {
+                  newValStr = newValStr.substring(2);
+               }
+               var reg = new RegExp('^[01]+$');
+               base = 2;
+               break;
+               
+            case "decimal":
+               var reg = new RegExp('^[0-9]+$');
+               base = 10;
+               break;
+         }
+         
+         if (newValStr == "")
+         {
+            newVal = 0;
+         }
+         
+         if (reg.test(newValStr) == false)
+         {
+            alert("Incorrect format!");
+            return;
+         }
+
+         
+         newValDec = parseInt(newValStr, base);
+         newValBin = newValDec.toString(2);
+         
+         if (newValDec > Math.pow(2, num_bits) - 1)
+         {
+            alert("Unsupported size!");
+            return;
+         }
+         
+         for (var i = num_bits - 1; i >= 0; --i)
+         {
+            if (i < newValBin.length)
+            {
+               $("#bit_val_" + i).val(newValBin[newValBin.length - 1 - i])
+            }
+            else 
+            {
+               $("#bit_val_" + i).val(0)
+            }
+         }
+         
+         updateValues();
+      }
+   );
+   
+   $("#new_window").click(
+      function()
+      {
+         window.open(window.location.href, "_blank", "toolbar=no, scrollbars=yes, resizable=yes, width=" 
+         + ($("#bits").width() + 100) + ", height=" + ($("#control").height() + $("h1:first").height() + 100));
+      }
+   );
+});
+</script>
+</body>
+</html>
