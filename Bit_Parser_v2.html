@@ -46,6 +46,7 @@
          padding: 10px;
          /*width: 60%;*/
          background:    #E8E8E8  ;
+         min-width: 360px;
       }
       
       
@@ -61,16 +62,8 @@
       #bits {
          margin: 20px auto;
          padding: 10px;
-         
-      }
-      
-      table, tr, td {
          border: 1px solid gray;
-      }
-      
-      td {
-         padding: 5px;
-         text-align: center;
+         max-width: 1350px;
       }
       
       .bit_num {
@@ -93,6 +86,47 @@
       #bit_form input {
          width: 270px;
       }
+
+      .bits-container {
+         display: flex;
+         margin: 0 auto;
+         display: flex;
+         flex-wrap: wrap;
+         justify-content: center;
+      }
+
+      .bit-row {
+         display: flex;
+      }
+
+      .byte {
+         width: 330px;
+      }
+
+      .byte {
+         margin: 10px 0;
+         width: 330px;
+      }
+
+      .short {
+         max-width: 660px;
+         display: flex;
+         flex-wrap: wrap;
+         justify-content: center;
+      }
+
+      .bit_val,
+      .bit_num {
+         flex: 1;
+         text-align: center;
+         padding: 5px;
+         border: 1px solid gray;
+         margin: 1px;
+         width: 15px;
+      }
+
+      
+
    </style>
 </head>
 
@@ -102,14 +136,10 @@
       <div style="text-align: center;">
          Value for <span id="the_value">0</span>
       </div>
-      <table id="bits">
-         <tr id="bit_values">
-         
-         </tr>
-         <tr id="bit_numbers">
-         
-         </tr>
-      </table>
+      <div id="bits" class="bits-container">
+
+      </div>
+       
       <div style="margin: 0 auto; width: 390px;">
          
          <form id="bit_form">
@@ -137,18 +167,22 @@
    </div>
    
 <script>
-   const NUM_BITS = 32;
+   const BITS_IN_BYTE = 8;
+   const BYTES_IN_WORD = 2;
+   const BYTES_IN_DWORD = 4;
+   const NUM_BITS_IN_DWORD = BITS_IN_BYTE * BYTES_IN_DWORD;
+   const NUM_BITS_IN_WORD = BITS_IN_BYTE * BYTES_IN_WORD;
    
-   if ( (Math.pow(2, NUM_BITS) - 1) > (Number.MAX_SAFE_INTEGER) )
+   if ( (Math.pow(2, NUM_BITS_IN_DWORD) - 1) > (Number.MAX_SAFE_INTEGER) )
    {
-      // Functionality such as toString(16), parseInt etc. start breaking if numbers are too large.
+      // Functionality such as toString(16), parseInt etc. starts breaking if numbers are too large.
       // They need to be reimplemented manually if needed.
       alert("Javascript can't easily handle such large numbers. Time to reimplement built-in functions manually.");
    }
    
    function updateValues() {
       let totalValueStr = "";
-      for (let i = NUM_BITS - 1; i >= 0; --i) {
+      for (let i = NUM_BITS_IN_DWORD - 1; i >= 0; --i) {
          const bitValElement = document.getElementById("bit_val_" + i);
          totalValueStr += bitValElement.value;
          if (bitValElement.value == 1) {
@@ -171,32 +205,59 @@
       for (let i = 0; i < bitFormInputs.length; i++) {
          bitFormInputs[i].value = "";
       }
-      
-      for (let i = NUM_BITS - 1; i >= 0; --i) {
-         const bitValues = document.getElementById("bit_values");
+
+      const bitsContainer = document.getElementById("bits");
+
+      let bitValRow, bitNumRow, short;
+
+      for (let i = NUM_BITS_IN_DWORD - 1; i >= 0; --i) {
+         
+         if (i % BITS_IN_BYTE === BITS_IN_BYTE - 1) {
+            const byte = document.createElement("div");
+            byte.className = "byte";
+
+            bitValRow = document.createElement("div");
+            bitValRow.className = "bit-row";
+
+            bitNumRow = document.createElement("div");
+            bitNumRow.className = "bit-row";
+            
+            byte.appendChild(bitValRow);
+            byte.appendChild(bitNumRow);
+            
+            if (i % NUM_BITS_IN_WORD === NUM_BITS_IN_WORD - 1) {
+               short = document.createElement("div");
+               short.className = "short";
+               
+               bitsContainer.appendChild(short);
+            }
+
+            short.appendChild(byte);
+         }
+         
+         // Bit Values
          const bitValInput = document.createElement("input");
          bitValInput.type = "text";
          bitValInput.value = "0";
          bitValInput.id = "bit_val_" + i;
          
-         const bitValTd = document.createElement("td");
-         bitValTd.className = "bit_val";
-         bitValTd.appendChild(bitValInput);
+         const bitValDiv = document.createElement("div");
+         bitValDiv.className = "bit_val";
+         bitValDiv.appendChild(bitValInput);
          
-         bitValues.appendChild(bitValTd);
+         bitValRow.appendChild(bitValDiv);
          
+         // Bit Numbers
          const bitNum = (i < 10) ? "0" + i : i;
          
-         const bitNumbers = document.getElementById("bit_numbers");
-         const bitNumTd = document.createElement("td");
-         bitNumTd.className = "bit_num";
-         bitNumTd.id = "bit_num_" + i;
-         bitNumTd.innerText = bitNum;
+         const bitNumDiv = document.createElement("div");
+         bitNumDiv.className = "bit_num";
+         bitNumDiv.id = "bit_num_" + i;
+         bitNumDiv.innerText = bitNum;
          
-         bitNumbers.appendChild(bitNumTd);
+         bitNumRow.appendChild(bitNumDiv);
       }
-      
-      
+
       const bitNums = document.querySelectorAll(".bit_num");
       bitNums.forEach(function(bitNum) {
          bitNum.addEventListener("click", function() {
@@ -206,7 +267,6 @@
             updateValues();
          });
       });
-      
       
       const bitVals = document.querySelectorAll(".bit_val input");
       bitVals.forEach(function(bitVal) {
@@ -265,12 +325,12 @@
             newValDec = parseInt(newValStr, base);
             newValBin = newValDec.toString(2);
             
-            if (newValDec > Math.pow(2, NUM_BITS) - 1) {
+            if (newValDec > Math.pow(2, NUM_BITS_IN_DWORD) - 1) {
                alert("Unsupported size!");
                return;
             }
             
-            for (let i = NUM_BITS - 1; i >= 0; --i) {
+            for (let i = NUM_BITS_IN_DWORD - 1; i >= 0; --i) {
                if (i < newValBin.length) {
                   document.getElementById("bit_val_" + i).value = newValBin[newValBin.length - 1 - i];
                } else {
