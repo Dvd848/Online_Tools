@@ -27,26 +27,19 @@
          font-family: Arial;
          background: #F0F0F0;
       }
-      
-      #wrapper {
-         border: 1px solid black;
-         margin: 10px;
-         padding: 10px;
-         background: white;
-      }
-      
-      
+     
       h1 {
          text-align: center;
       }
       
       #control {
          border: 1px solid gray;
-         margin: 10px ;
          padding: 10px;
+         margin-bottom: 20px;
          /*width: 60%;*/
          background:    #E8E8E8  ;
          min-width: 360px;
+         grid-column: span 2;
       }
       
       
@@ -125,45 +118,88 @@
          width: 15px;
       }
 
-      
+      #wrapper {
+         display: grid;
+         grid-template-rows: 1fr 1fr;
+         grid-template-columns: 1fr 1fr;
+         padding: 20px;
+      }
+
+      #definition_wrapper {
+         text-align:center;
+         padding-right: 30px;
+      }
+
+      #definition {
+         width: 100%;
+         height: 300px;
+         border: 1px solid gray;
+         resize: none;
+      }
+
+      #output_wrapper table {
+         width: 100%;
+      }
+
+      #output_wrapper td {
+         border: 1px solid gray;
+         background: white;
+      }
+
+      #output_wrapper td {
+         padding: 10px;
+      }
 
    </style>
 </head>
 
 <body>
    <h1>Bit Parser</h1>
-   <div id="control">
-      <div style="text-align: center;">
-         Value for <span id="the_value">0</span>
+   <div id="wrapper">
+      <div id="control">
+         <div style="text-align: center;">
+            Value for <span id="the_value">0</span>
+         </div>
+         <div id="bits" class="bits-container">
+   
+         </div>
+          
+         <div style="margin: 0 auto; width: 390px;">
+            
+            <form id="bit_form">
+               <div>
+                  <label>Decimal:</label>
+                  <input type="text" id="decimal" />
+               </div>
+               
+               <div>
+                  <label>Hex:</label>
+                  <input type="text" id="hex" />
+               </div>
+               
+               <div>
+                  <label>Binary:</label>
+                  <input type="text" id="binary" />
+               </div>
+            </form>
+            
+         </div>
+         <div style="text-align: center">
+            <button id="new_window">Open new Window</button>
+         </div>
+         <div style="clear:both"></div>
       </div>
-      <div id="bits" class="bits-container">
 
-      </div>
-       
-      <div style="margin: 0 auto; width: 390px;">
+      <div id="definition_wrapper">
+         <textarea id="definition" placeholder="Insert your bit-field definition here:
          
-         <form id="bit_form">
-            <div>
-               <label>Decimal:</label>
-               <input type="text" id="decimal" />
-            </div>
-            
-            <div>
-               <label>Hex:</label>
-               <input type="text" id="hex" />
-            </div>
-            
-            <div>
-               <label>Binary:</label>
-               <input type="text" id="binary" />
-            </div>
-         </form>
-         
+         uint32_t field1 : 3;
+         uint32_t field2 : 5;
+         ...
+         uint32_t fieldN : 1;
+         "></textarea>
       </div>
-      <div style="text-align: center">
-         <button id="new_window">Open new Window</button>
-      </div>
-      <div style="clear:both"></div>
+      <div id="output_wrapper"></div>
    </div>
    
 <script>
@@ -197,7 +233,97 @@
       document.getElementById("hex").value = "0x" + totalValue.toString(16);
       document.getElementById("binary").value = "0b" + totalValue.toString(2);
       
-      document.getElementById("the_value").innerText = document.getElementById("decimal").value + " (" + document.getElementById("hex").value + ")";
+      document.getElementById("the_value").innerText = document.getElementById("decimal").value 
+                                                      + " (" + document.getElementById("hex").value + ")";
+
+      const bitFieldDefinition = document.getElementById("definition").value;
+      if (bitFieldDefinition.trim() != "") {
+         populateBitFieldTable(extractBitFields(bitFieldDefinition), totalValue);
+      }
+   }
+
+   function populateBitFieldTable(bitFields, integerValue) {
+      
+      const tableDiv = document.getElementById('output_wrapper');
+      tableDiv.innerHTML = '';
+      if (bitFields.length == 0)
+      {
+         return;
+      }
+
+      const table = document.createElement('table');
+      const headerRow = table.insertRow(0);
+      
+      // Create header cells
+      const headerCells = ['Field Name', '# Bits', 'Location', 'Decimal', 'Hex', 'Binary'];
+      for (let i = 0; i < headerCells.length; i++) {
+         const cell = headerRow.insertCell(i);
+         cell.innerHTML = `<b>${headerCells[i]}</b>`;
+      }
+      
+      // Populate data rows
+      let shift = 0;
+      for (let i = 0; i < bitFields.length; i++) {
+         const row = table.insertRow(i + 1);
+         const { fieldName, bitCount } = bitFields[i];
+         let cellIndex = 0;
+         
+         // Name
+         const nameCell = row.insertCell(cellIndex++);
+         nameCell.innerHTML = fieldName;
+         
+         // Number of Bits
+         const bitCountCell = row.insertCell(cellIndex++);
+         let bitCountData = bitCount;
+         bitCountCell.innerHTML = bitCount;
+
+         // Location
+         const locationCell = row.insertCell(cellIndex++);
+         locationCell.innerHTML = (bitCount > 0) 
+            ? `${shift.toString().padStart(2, "0")}:${(shift + bitCount - 1).toString().padStart(2, "0")}` 
+            : '';
+         
+         // Decimal Value
+         const decimalCell = row.insertCell(cellIndex++);
+         const mask = (1 << bitCount) - 1;
+         const fieldValue = (integerValue >> shift) & mask;
+         shift += bitCount;
+         decimalCell.innerHTML = fieldValue;
+
+         // Hex Value
+         const hexCell = row.insertCell(cellIndex++);
+         hexCell.innerHTML = "0x" + fieldValue.toString(16);
+
+         // Binary Value
+         const binCell = row.insertCell(cellIndex++);
+         binCell.innerHTML = "0b" + fieldValue.toString(2).padStart(bitCount, "0");
+      }
+      
+      tableDiv.appendChild(table);
+   }
+
+   function extractBitFields(structure) {
+      // Regular expression to match bit fields in a C structure
+      const regex = /(?:\s|^)(\w+)\s*:\s*(\d+)(?=[^;]*;)/g;
+
+      const fields = [];
+      let match;
+      let bitSum = 0;
+
+      while ((match = regex.exec(structure)) !== null) {
+         // Match[1] is the field name, and Match[2] is the number of bits
+         const fieldName = match[1];
+         const bitCount = parseInt(match[2], 10);
+         
+         fields.push({ fieldName, bitCount });
+         bitSum += bitCount;
+      }
+
+      if (bitSum > NUM_BITS_IN_DWORD) {
+         return [];
+      }
+
+      return fields;
    }
    
    document.addEventListener("DOMContentLoaded", function() {
@@ -282,6 +408,13 @@
             }
          });
       });
+
+      const definition = document.getElementById("definition");
+      definition.addEventListener("blur", function(event) {
+         if (definition.value.trim() != "") {
+            updateValues();
+         }
+      });
       
       bitFormInputs.forEach(function(input) {
          input.addEventListener("change", function() {
@@ -339,6 +472,12 @@
             }
             
             updateValues();
+         });
+
+         document.getElementById('definition').addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+               e.preventDefault();
+            }
          });
       });
       
