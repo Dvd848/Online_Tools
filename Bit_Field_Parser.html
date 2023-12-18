@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-   <title>Bit Parser</title>
+   <title>Bit Field Parser</title>
    <!--
     Copyright 2018
 
@@ -70,7 +70,7 @@
          background-color: #FF9900;
       }
       
-      .bit_val input {
+      .bit_val_wrapper input {
          width: 20px;
          height: 20px;
          text-align: center;
@@ -108,7 +108,7 @@
          justify-content: center;
       }
 
-      .bit_val,
+      .bit_val_wrapper,
       .bit_num {
          flex: 1;
          text-align: center;
@@ -143,18 +143,26 @@
 
       #output_wrapper td {
          border: 1px solid gray;
-         background: white;
+         background-color: white;
       }
 
       #output_wrapper td {
          padding: 10px;
       }
 
+      .bit_val_wrapper.selected {
+         background-color: lightblue;
+      }
+
+      #output_wrapper tr:hover td {
+         background-color: lightblue;
+      }
+
    </style>
 </head>
 
 <body>
-   <h1>Bit Parser</h1>
+   <h1>Bit Field Parser</h1>
    <div id="wrapper">
       <div id="control">
          <div style="text-align: center;">
@@ -267,6 +275,9 @@
          const row = table.insertRow(i + 1);
          const { fieldName, bitCount } = bitFields[i];
          let cellIndex = 0;
+
+         const fromBit = shift;
+         const toBit = shift + bitCount - 1;
          
          // Name
          const nameCell = row.insertCell(cellIndex++);
@@ -280,7 +291,7 @@
          // Location
          const locationCell = row.insertCell(cellIndex++);
          locationCell.innerHTML = (bitCount > 0) 
-            ? `${shift.toString().padStart(2, "0")}:${(shift + bitCount - 1).toString().padStart(2, "0")}` 
+            ? `${fromBit.toString().padStart(2, "0")}:${toBit.toString().padStart(2, "0")}` 
             : '';
          
          // Decimal Value
@@ -297,6 +308,21 @@
          // Binary Value
          const binCell = row.insertCell(cellIndex++);
          binCell.innerHTML = "0b" + fieldValue.toString(2).padStart(bitCount, "0");
+
+         if (bitCount > 0) 
+         {
+            row.addEventListener('mouseover', function () {
+               for (let j = fromBit; j <= toBit; ++j) {
+                  document.getElementById(`bit_val_wrapper_${j}`).classList.add("selected");
+               }
+            });
+   
+            row.addEventListener('mouseout', function () {
+               for (let j = 0; j < NUM_BITS_IN_DWORD; ++j) {
+                  document.getElementById(`bit_val_wrapper_${j}`).classList.remove("selected");
+               }
+            });
+         }
       }
       
       tableDiv.appendChild(table);
@@ -368,7 +394,8 @@
          bitValInput.id = "bit_val_" + i;
          
          const bitValDiv = document.createElement("div");
-         bitValDiv.className = "bit_val";
+         bitValDiv.className = "bit_val_wrapper";
+         bitValDiv.id = `bit_val_wrapper_${i}`;
          bitValDiv.appendChild(bitValInput);
          
          bitValRow.appendChild(bitValDiv);
@@ -394,7 +421,7 @@
          });
       });
       
-      const bitVals = document.querySelectorAll(".bit_val input");
+      const bitVals = document.querySelectorAll(".bit_val_wrapper input");
       bitVals.forEach(function(bitVal) {
          bitVal.addEventListener("change", function() {
             updateValues();
