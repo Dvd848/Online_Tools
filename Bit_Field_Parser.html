@@ -155,7 +155,11 @@
          padding: 10px;
       }
 
-      .bit_val_wrapper.selected {
+      .bit_val_wrapper.mark_click {
+         background-color: #f5b7b1 ;
+      }
+
+      .bit_val_wrapper.mark_hover {
          background-color: lightblue;
       }
 
@@ -290,7 +294,7 @@
 
          const mask = (1 << bitCount) - 1;
          const fieldValue = (integerValue >> shift) & mask;
-         
+
          // Hex Value
          const hexCell = row.insertCell(cellIndex++);
          hexCell.innerHTML = "0x" + fieldValue.toString(16);
@@ -321,13 +325,30 @@
          {
             row.addEventListener('mouseover', function () {
                for (let j = fromBit; j <= toBit; ++j) {
-                  document.getElementById(`bit_val_wrapper_${j}`).classList.add("selected");
+                  document.getElementById(`bit_val_wrapper_${j}`).classList.add("mark_hover");
                }
             });
    
             row.addEventListener('mouseout', function () {
                for (let j = 0; j < NUM_BITS_IN_DWORD; ++j) {
-                  document.getElementById(`bit_val_wrapper_${j}`).classList.remove("selected");
+                  document.getElementById(`bit_val_wrapper_${j}`).classList.remove("mark_hover");
+               }
+            });
+
+            row.addEventListener('click', function () {
+               const first_bit_val = document.getElementById(`bit_val_wrapper_${fromBit}`);
+               let mark = false;
+               if (!first_bit_val.classList.contains("mark_click")) {
+                  mark = true;
+               }
+               for (let j = 0; j < NUM_BITS_IN_DWORD; ++j) {
+                  document.getElementById(`bit_val_wrapper_${j}`).classList.remove("mark_click");
+               }
+
+               if (mark) {
+                  for (let j = fromBit; j <= toBit; ++j) {
+                     document.getElementById(`bit_val_wrapper_${j}`).classList.add("mark_click");
+                  }
                }
             });
          }
