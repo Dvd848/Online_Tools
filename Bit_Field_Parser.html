@@ -120,7 +120,6 @@
 
       #wrapper {
          display: grid;
-         grid-template-rows: 1fr 1fr;
          grid-template-columns: 1fr 1fr;
          padding: 20px;
       }
@@ -135,6 +134,12 @@
          height: 300px;
          border: 1px solid gray;
          resize: none;
+         min-width: 50px;
+      }
+
+      #output_wrapper {
+         overflow: auto;
+         min-height: 300px;
       }
 
       #output_wrapper table {
