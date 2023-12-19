@@ -268,7 +268,7 @@
       const headerRow = table.insertRow(0);
       
       // Create header cells
-      const headerCells = ['Field Name', '# Bits', 'Location', 'Decimal', 'Hex', 'Binary'];
+      const headerCells = ['Field Name', 'Hex', 'Decimal', 'Binary', '# Bits', 'Location'];
       for (let i = 0; i < headerCells.length; i++) {
          const cell = headerRow.insertCell(i);
          cell.innerHTML = `<b>${headerCells[i]}</b>`;
@@ -287,7 +287,24 @@
          // Name
          const nameCell = row.insertCell(cellIndex++);
          nameCell.innerHTML = fieldName;
+
+         const mask = (1 << bitCount) - 1;
+         const fieldValue = (integerValue >> shift) & mask;
          
+         // Hex Value
+         const hexCell = row.insertCell(cellIndex++);
+         hexCell.innerHTML = "0x" + fieldValue.toString(16);
+
+         // Decimal Value
+         const decimalCell = row.insertCell(cellIndex++);
+         shift += bitCount;
+         decimalCell.innerHTML = fieldValue;
+
+         // Binary Value
+         const binCell = row.insertCell(cellIndex++);
+         binCell.innerHTML = "0b" + fieldValue.toString(2).padStart(bitCount, "0");
+
+
          // Number of Bits
          const bitCountCell = row.insertCell(cellIndex++);
          let bitCountData = bitCount;
@@ -299,20 +316,6 @@
             ? `${fromBit.toString().padStart(2, "0")}:${toBit.toString().padStart(2, "0")}` 
             : '';
          
-         // Decimal Value
-         const decimalCell = row.insertCell(cellIndex++);
-         const mask = (1 << bitCount) - 1;
-         const fieldValue = (integerValue >> shift) & mask;
-         shift += bitCount;
-         decimalCell.innerHTML = fieldValue;
-
-         // Hex Value
-         const hexCell = row.insertCell(cellIndex++);
-         hexCell.innerHTML = "0x" + fieldValue.toString(16);
-
-         // Binary Value
-         const binCell = row.insertCell(cellIndex++);
-         binCell.innerHTML = "0b" + fieldValue.toString(2).padStart(bitCount, "0");
 
          if (bitCount > 0) 
          {
