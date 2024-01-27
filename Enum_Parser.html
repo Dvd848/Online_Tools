@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+   <title>Enum Parser</title>
+   <!--
+    Copyright 2024
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+    software and associated documentation files (the "Software"), to deal in the Software 
+    without restriction, including without limitation the rights to use, copy, modify, 
+    merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+    persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or 
+    substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+    PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+    FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+    DEALINGS IN THE SOFTWARE.
+   -->
+   <style>
+      body {
+         font-family: Arial;
+         background: #F0F0F0;
+      }
+     
+      h1 {
+         text-align: center;
+      }
+
+      #wrapper {
+         display: grid;
+         grid-template-columns: 1fr 1fr;
+         padding: 20px;
+      }
+
+      #definition_wrapper {
+         text-align:center;
+         padding-right: 30px;
+      }
+
+      #definition_wrapper button {
+         padding: 20px;
+         width: 150px;
+         margin: 10px;
+      }
+
+      #definition {
+         width: 100%;
+         height: 300px;
+         border: 1px solid gray;
+         resize: none;
+         min-width: 50px;
+      }
+
+      #output_wrapper {
+         overflow: auto;
+         min-height: 300px;
+      }
+
+      #output_wrapper table {
+         width: 100%;
+      }
+
+      #output_wrapper td {
+         border: 1px solid gray;
+         background-color: white;
+      }
+
+      #output_wrapper td {
+         padding: 10px;
+      }
+
+      #output_wrapper tr:hover td {
+         background-color: lightblue;
+      }
+
+      #output_wrapper tbody td:nth-child(1) {  
+         font-family: "Courier New", "Lucida Console", monospace;
+      }
+
+   </style>
+</head>
+
+<body>
+   <h1>Enum Parser</h1>
+   <div id="wrapper">
+      <div id="definition_wrapper">
+         <textarea id="definition" placeholder="Insert your (legal) enum definition here:
+         
+         typedef enum {
+            VALUE1,
+            VALUE2 = 10,
+            VALUE3,
+            VALUE4 = VALUE3,
+            VALUE5, // Comment
+            VALUE6, /* Comment */
+            VALUE7
+         } MyEnum;
+         "></textarea>
+         <button id="parse">Parse</button>
+      </div>
+      <div id="output_wrapper"></div>
+   </div>
+   
+<script>
+   function convertStringToNumber(input) {
+      const trimmedInput = input.trim();
+      
+      // Check if it's a decimal number
+      if (/^\d+(\.\d+)?$/.test(trimmedInput)) {
+         return parseFloat(trimmedInput);
+      }
+      
+      // Check if it's a binary number
+      if (/^[01]+$/.test(trimmedInput)) {
+         return parseInt(trimmedInput, 2);
+      }
+      
+      // Check if it's a hex number
+      if (/^0[xX][0-9a-fA-F]+$/.test(trimmedInput)) {
+         return parseInt(trimmedInput, 16);
+      }
+      
+      // Check if it's an octal number
+      if (/^0[0-7]+$/.test(trimmedInput)) {
+         return parseInt(trimmedInput, 8);
+      }
+      
+      // Return the string itself if it doesn't match any format
+      return trimmedInput;
+   }
+   
+   function updateValues() {
+      try {
+         const definition = document.getElementById("definition").value;
+         const parsedDef = parseCEnum(definition);
+         console.log(parsedDef);
+      
+         const mapping = {};
+         let nextIndex = 0;
+   
+         parsedDef.forEach((line) => {
+            let value = nextIndex;
+            if (typeof(line.value) != "undefined") {
+               value = convertStringToNumber(line.value);
+               if (typeof value === 'string') {
+                  if (value in mapping) {
+                     value = mapping[value];
+                  }
+                  else {
+                     throw `Can't find value for '${value}'`;
+                  }
+               }
+               nextIndex = value;
+            }
+            if (line.key in mapping) {
+               throw `Redeclaration of enumerator '${line.key}'`;
+            }
+
+            mapping[line.key] = value;
+            nextIndex += 1;
+         });
+   
+         populateTable(mapping);
+      } catch (err) {
+         const output = document.getElementById("output_wrapper");
+         output.innerHTML = `<h2>Error</h2><p>${err}</p>`;
+      }
+   }
+
+   function stripComments(cCode) {
+    // Remove single-line comments (// ...)
+    cCode = cCode.replace(/\/\/.*$/gm, '');
+
+    // Remove multi-line comments (/* ... */)
+    cCode = cCode.replace(/\/\*[\s\S]*?\*\//gm, '');
+
+    return cCode;
+}
+
+   function parseCEnum(enumDefinition) {
+      // Regular expression to match C enum definitions
+      const regex = /(?:typedef\s+)?(?:enum\s+\w*\s*)?{([^}]+)}/;
+
+      // Strip comments
+      enumDefinition = stripComments(enumDefinition);
+
+      // Extract the content inside the curly braces
+      const match = enumDefinition.match(regex);
+
+      if (!match) {
+         throw "Can't identify enum definition from input!";
+      }
+
+      const enumContent = match[1];
+      const enumLines = enumContent.split(',');
+
+      // Regular expression to extract enum key and value
+      const enumItemRegex = /\s*([A-Za-z_]\w*)\s*(?:=\s*([^,]+))?/;
+
+      // Iterate over enum lines and extract keys and values
+      const result = enumLines.map(line => {
+            const itemMatch = line.match(enumItemRegex);
+            if (itemMatch) {
+               const key = itemMatch[1];
+               const value = itemMatch[2];
+               return { key, value };
+            }
+      });
+
+      return result.filter(item => item !== undefined);
+   }
+
+   function populateTable(mapping) {
+      
+      const tableDiv = document.getElementById('output_wrapper');
+      tableDiv.innerHTML = '';
+      if (mapping.length == 0)
+      {
+         return;
+      }
+
+      const table = document.createElement('table');
+      const headerRow = table.createTHead().insertRow(0);
+      
+      // Create header cells
+      const headerCells = ['Field Name', 'Hex', 'Decimal'];
+      for (let i = 0; i < headerCells.length; i++) {
+         const cell = headerRow.insertCell(i);
+         cell.innerHTML = `<b>${headerCells[i]}</b>`;
+      }
+      
+      // Populate data rows
+      let numRows = 0;
+      const tableBody = table.createTBody();
+      for (const [key, value] of Object.entries(mapping)) {
+         const row = tableBody.insertRow(numRows);
+         let cellIndex = 0;
+
+         // Name
+         const nameCell = row.insertCell(cellIndex++);
+         nameCell.innerHTML = key;
+
+         // Hex Value
+         const hexCell = row.insertCell(cellIndex++);
+         hexCell.innerHTML = "0x" + value.toString(16);
+
+         // Decimal Value
+         const decimalCell = row.insertCell(cellIndex++);
+         decimalCell.innerHTML = value;
+
+         tableDiv.appendChild(table);
+
+         numRows += 1;
+      }
+   }
+   
+   document.addEventListener("DOMContentLoaded", function() {
+      const definition = document.getElementById("definition");
+      /*
+      definition.addEventListener("blur", function(event) {
+         if (definition.value.trim() != "") {
+            updateValues();
+         }
+      });
+      */
+
+      const parseButton = document.getElementById("parse");
+      parseButton.addEventListener("click", function(event) {
+         if (definition.value.trim() != "") {
+            updateValues();
+         }
+      });
+      
+      document.getElementById('definition').addEventListener('keydown', function(e) {
+         if (e.key == 'Tab') {
+            e.preventDefault();
+         }
+      });   
+   });
+</script>
+</body>
+</html>
