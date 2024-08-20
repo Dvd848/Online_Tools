@@ -134,6 +134,47 @@
       // Return the string itself if it doesn't match any format
       return trimmedInput;
    }
+
+   function evaluateEquation(mapping, equation) {
+      const translated_equation = equation.replace(/\b[a-zA-Z_]\w*\b/g, function(variable) {
+         if (mapping.hasOwnProperty(variable)) {
+            return mapping[variable];
+         } else {
+            throw new Error(`Can't find value for "${variable}"!`);
+         }
+      });
+      
+      function evaluateExpression(original_equation, expr, depth) {
+         if (depth == 10) {
+            throw new Error(`Error parsing "${original_equation}", too complex...`);
+         }
+
+         if ((expr.match(/\(/g) || []).length != (expr.match(/\)/g) || []).length) {
+            throw new Error(`Error parsing "${original_equation}", perhaps uneven parentheses?`);
+         }
+
+         expr = expr.replace(/\s+/g, '');
+         
+         while (expr.includes('(')) {
+            let new_expr = expr.replace(/\([^()]*\)/g, function(subExpr) {
+               return evaluateExpression(original_equation, subExpr.slice(1, -1), depth + 1); // Evaluate the expression inside the parentheses
+            });
+            if (new_expr == expr) {
+               throw new Error(`Error parsing "${original_equation}", perhaps uneven parentheses?`);
+            }
+            expr = new_expr;
+         }
+         
+         const terms = expr.match(/[+-]?\d+/g);
+         if (!terms) {
+            throw new Error(`Invalid equation format: "${original_equation}"`);
+         }
+         
+         return terms.reduce((acc, term) => acc + parseInt(term), 0);
+      }
+      
+      return evaluateExpression(equation, translated_equation, 0);
+   }
    
    function updateValues() {
       try {
@@ -149,12 +190,7 @@
             if (typeof(line.value) != "undefined") {
                value = convertStringToNumber(line.value);
                if (typeof value === 'string') {
-                  if (value in mapping) {
-                     value = mapping[value];
-                  }
-                  else {
-                     throw `Can't find value for '${value}'`;
-                  }
+                  value = evaluateEquation(mapping, value);
                }
                nextIndex = value;
             }
@@ -248,7 +284,7 @@
 
          // Hex Value
          const hexCell = row.insertCell(cellIndex++);
-         hexCell.innerHTML = "0x" + value.toString(16);
+         hexCell.innerHTML = ((value < 0) ? "-" : "") + "0x" + Math.abs(value).toString(16);
 
          // Decimal Value
          const decimalCell = row.insertCell(cellIndex++);
